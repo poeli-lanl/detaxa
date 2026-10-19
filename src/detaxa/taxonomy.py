@@ -104,7 +104,7 @@ def _checkTaxonomy(tid: Union[int, str]):
         logger.info("Loading taxonomy...")
         loadTaxonomy()
 
-    if tid:
+    if tid!=None and tid!= "":
         # tid must be in string type
         tid = str(tid)
 
@@ -459,15 +459,19 @@ def name2taxid(name: str,
         df_temp = df_names.head(0)
         logging.debug(f"Searching {name}...")
 
-        if fuzzy==True:
-            import difflib
-            matches = difflib.get_close_matches(name, df_names.index, max_matches, cutoff)
-            logger.debug(f'{name}: {matches}')
-            df_temp = df_names.loc[matches,:]
-        else:
-            if name in df_names.index:
-                df_temp = df_names.loc[[name],:]
+        # direct match
+        if name in df_names.index:
+            df_temp = df_names.loc[[name],:]
+        
+        # if no direct match, and fuzzy search is on
+        if fuzzy==True and len(df_temp)==0:
+            import rapidfuzz
+            matches = rapidfuzz.process.extract(name, df_names.index, limit=max_matches, score_cutoff=cutoff)
+            matched_names = [match[0] for match in matches]
+            logger.debug(f'{name}: {matched_names}')
+            df_temp = df_names.loc[matched_names,:]
 
+        # return empty list if no match found
         if len(df_temp)==0:
             nameTid[name] = []
             return nameTid[name]
